@@ -463,14 +463,15 @@
 
             ['dashboard', 'allocation', 'summary', 'manage'].forEach(id => {
                 const el = document.getElementById(`tab-content-${id}`);
+                // ซ่อนทุกหน้า และลบคลาส flex ออกทั้งหมด (รวมถึง lg:flex ที่ทำให้หน้าค้าง)
                 el.classList.add('hidden');
-                el.classList.remove('flex');
+                el.classList.remove('flex', 'lg:flex');
             });
 
+            // เปิดแสดงผลเฉพาะหน้าปัจจุบัน
             const activeEl = document.getElementById(`tab-content-${tabId}`);
             activeEl.classList.remove('hidden');
-            activeEl.classList.add(tabId === 'manage' ? 'lg:flex' : 'flex');
-            if(tabId !== 'manage') activeEl.classList.add('flex-col'); // Add back col layout for others
+            activeEl.classList.add('flex'); 
 
             reRenderCurrentTab();
         };
