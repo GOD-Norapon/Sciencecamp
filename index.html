@@ -310,10 +310,13 @@
                         <div class="p-6 border-b border-slate-100 shrink-0 bg-white">
                             <form id="form-add-activity" class="flex flex-col gap-4">
                                 <input type="text" id="input-activity-name" placeholder="ชื่อกิจกรรมค่าย" required class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-base rounded-xl focus:ring-brand-500 focus:border-brand-500 block p-3.5 transition-colors font-medium">
-                                <select id="input-activity-type" class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-base rounded-xl focus:ring-brand-500 focus:border-brand-500 block p-3.5 transition-colors font-medium">
-                                    <option value="in_province">📍 ในจังหวัด</option>
-                                    <option value="out_province">✈️ ต่างจังหวัด</option>
-                                </select>
+                                <div class="flex flex-col sm:flex-row gap-4">
+                                    <select id="input-activity-type" class="w-full sm:w-1/2 bg-slate-50 border-2 border-slate-200 text-slate-900 text-base rounded-xl focus:ring-brand-500 focus:border-brand-500 block p-3.5 transition-colors font-medium">
+                                        <option value="in_province">📍 ในจังหวัด</option>
+                                        <option value="out_province">✈️ ต่างจังหวัด</option>
+                                    </select>
+                                    <input type="number" id="input-activity-capacity" placeholder="จำนวนคนที่รับ (คน)" required min="1" class="w-full sm:w-1/2 bg-slate-50 border-2 border-slate-200 text-slate-900 text-base rounded-xl focus:ring-brand-500 focus:border-brand-500 block p-3.5 transition-colors font-medium">
+                                </div>
                                 <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white px-6 py-4 rounded-xl text-base font-bold transition-colors mt-2 shadow-sm">บันทึกกิจกรรมใหม่</button>
                             </form>
                         </div>
@@ -548,7 +551,7 @@
                         </div>
                     </div>
                     <div class="px-6 py-4 bg-slate-50/80 border-t border-slate-100 flex justify-between items-center rounded-b-2xl shrink-0">
-                        <span class="text-sm font-semibold text-slate-500">บุคลากรที่ไป: <span class="text-slate-800 font-bold bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm ml-1">${assignedIds.length}</span></span>
+                        <span class="text-sm font-semibold text-slate-500">บุคลากรที่ไป: <span class="text-slate-800 font-bold bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm ml-1">${assignedIds.length} / ${act.capacity || 0}</span></span>
                         <button onclick="window.jumpToAllocation('${act.id}')" class="bg-white border border-slate-200 hover:border-brand-400 text-brand-600 hover:text-brand-700 hover:bg-brand-50 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm">
                             จัดสรรคน
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
@@ -686,7 +689,7 @@
             });
 
             document.getElementById('unselected-count').textContent = countAvail;
-            document.getElementById('selected-count').textContent = countAssigned;
+            document.getElementById('selected-count').textContent = `${countAssigned} / ${act.capacity || 0}`;
         };
 
         function renderSummary() {
@@ -742,14 +745,16 @@
             const btn = e.target.querySelector('button[type="submit"]');
             const name = document.getElementById('input-activity-name').value.trim();
             const type = document.getElementById('input-activity-type').value;
+            const capacity = document.getElementById('input-activity-capacity').value;
             
-            if(name) {
+            if(name && capacity) {
                 try {
                     btn.disabled = true;
                     btn.textContent = 'กำลังบันทึก...';
                     await addDoc(collection(db, PATH_ACTIVITIES), { 
                         name: name, 
                         type: type, 
+                        capacity: parseInt(capacity) || 0,
                         createdAt: Date.now(),
                         assignedTeachers: []
                     });
@@ -801,9 +806,14 @@
         window.saveEditActivity = async function(id) {
             const newName = document.getElementById('edit-act-name-' + id).value.trim();
             const newType = document.getElementById('edit-act-type-' + id).value;
+            const newCapacity = document.getElementById('edit-act-capacity-' + id).value;
             if(!newName) return;
             try {
-                await updateDoc(doc(db, PATH_ACTIVITIES, id), { name: newName, type: newType });
+                await updateDoc(doc(db, PATH_ACTIVITIES, id), { 
+                    name: newName, 
+                    type: newType,
+                    capacity: parseInt(newCapacity) || 0
+                });
                 window.editingActivityId = null;
                 renderManageActivities();
             } catch(e) {
@@ -899,10 +909,13 @@
                         <li class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-brand-50 border border-brand-200 rounded-xl shadow-sm gap-4">
                             <div class="flex-1 flex flex-col xl:flex-row gap-2 w-full">
                                 <input type="text" id="edit-act-name-${act.id}" value="${act.name}" class="flex-1 bg-white border border-brand-300 text-slate-900 text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 p-2.5 font-bold min-w-0">
-                                <select id="edit-act-type-${act.id}" class="w-full xl:w-40 bg-white border border-brand-300 text-slate-900 text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 p-2.5 font-bold shrink-0">
-                                    <option value="in_province" ${isProvSel}>ในจังหวัด</option>
-                                    <option value="out_province" ${isOutSel}>ต่างจังหวัด</option>
-                                </select>
+                                <div class="flex gap-2 w-full xl:w-auto">
+                                    <select id="edit-act-type-${act.id}" class="flex-1 xl:w-36 bg-white border border-brand-300 text-slate-900 text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 p-2.5 font-bold shrink-0">
+                                        <option value="in_province" ${isProvSel}>ในจังหวัด</option>
+                                        <option value="out_province" ${isOutSel}>ต่างจังหวัด</option>
+                                    </select>
+                                    <input type="number" id="edit-act-capacity-${act.id}" value="${act.capacity || 0}" min="1" placeholder="คน" class="w-20 bg-white border border-brand-300 text-slate-900 text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 p-2.5 font-bold shrink-0">
+                                </div>
                             </div>
                             <div class="flex gap-2 shrink-0 w-full sm:w-auto justify-end">
                                 <button onclick="window.saveEditActivity('${act.id}')" class="text-white bg-emerald-500 hover:bg-emerald-600 px-3 py-2.5 rounded-lg transition-colors font-semibold text-sm">บันทึก</button>
@@ -921,6 +934,7 @@
                                 <p class="text-base font-bold text-slate-800 truncate leading-tight">${act.name}</p>
                                 <div class="flex items-center gap-3 mt-2">
                                     ${tBadge}
+                                    <span class="text-sm font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200 shadow-sm">รับ ${act.capacity || 0} คน</span>
                                 </div>
                             </div>
                             <div class="flex gap-2 shrink-0">
